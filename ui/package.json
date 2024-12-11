@@ -15,8 +15,7 @@
   "dependencies": {
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-shell": "^2.2.0",
-    "@types/jsoneditor": "^9.9.5",
-    "jsoneditor": "^10.1.1"
+    "svelte-jsoneditor": "^2.3.3"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.6",
