@@ -1,0 +1,13 @@
+version = 1
+
+[[templates]]
+name = "sample1"
+url = "http://example.com"
+data = "this is a pen."
+header = "{}"
+
+[[templates]]
+name = "sampleAA"
+url = "http://example.com"
+data = "The quick brown fox jumps over the lazy dog"
+header = "{}"
