@@ -77,8 +77,15 @@
       <input id="url" bind:value={url} placeholder="url..." />
     </p>
     <p>
-      <button type="submit" name="get">GET</button>
-      <button type="submit" name="post">POST</button>
+      <button type="submit" name="get" on:click={
+      async () =>
+    await invoke("http_get")
+}
+      >GET</button>
+      <button type="submit" name="post" on:click={
+      async () =>
+    await invoke("http_post")
+      }>POST</button>
       <button type="submit" name="put">PUT</button>
       <button type="submit" name="delete">DELETE</button>
     </p>
