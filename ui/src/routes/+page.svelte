@@ -9,21 +9,24 @@
     templates: [],
   };
 
-  let content = {
-    text: undefined, // can be used to pass a stringified JSON document instead
-    json: {
-      array: [1, 2, 3],
-      boolean: true,
-      color: "#82b92c",
-      null: null,
-      number: 123,
-      object: { a: "b", c: "d" },
-      string: "Hello World",
-    },
-  };
+  let content: JSON = JSON.parse(
+    JSON.stringify({
+      text: undefined, // can be used to pass a stringified JSON document instead
+      json: {
+        array: [1, 2, 3],
+        boolean: true,
+        color: "#82b92c",
+        null: null,
+        number: 123,
+        object: { a: "b", c: "d" },
+        string: "Hello World",
+      },
+    }),
+  );
 
-  let cookie = "";
-  let url = "";
+  let cookie: string = "";
+  let url: string = "";
+  let response: string = "";
 
   async function greet() {
     // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
@@ -31,7 +34,7 @@
 
   const getContent = () => content;
   const updateContent = (newContent: string) => {
-    content = JSON.parse(newContent);
+    content = JSON.parse(JSON.stringify({ json: JSON.parse(newContent) }));
   };
 
   const onSelectUpdate = (selected: TemplateObject) => {
@@ -43,8 +46,24 @@
 
   onMount(async () => {
     config = await invoke("load_config");
-    console.info(config);
+    console.info("load_config", config);
   });
+
+  const handleChange = (
+    updatedContent: JSON,
+    previousContent: JSON,
+    { contentErrors, patchResult },
+  ) => {
+    // content is an object { json: unknown } | { text: string }
+    console.log("onChange: ", {
+      updatedContent,
+      previousContent,
+      contentErrors,
+      patchResult,
+    });
+
+    content = updatedContent;
+  };
 
   $: {
     if (config.version > 0) {
@@ -68,30 +87,42 @@
 </header>
 
 <div class="container">
-  <form class="row" on:submit|preventDefault={greet}>
-    <p>
-      <textarea id="cookie" placeholder="Cookie..." bind:value={cookie}
-      ></textarea>
-    </p>
-    <p>
-      <input id="url" bind:value={url} placeholder="url..." />
-    </p>
-    <p>
-      <button type="submit" name="get" onclick={
-      async () =>
-    await invoke("http_get")
-}
-      >GET</button>
-      <button type="submit" name="post" onclick={
-      async () =>
-    await invoke("http_post", {urlStr: url, cookirStr: cookie, headerStr: "", })
-      }>POST</button>
-      <button type="submit" name="put">PUT</button>
-      <button type="submit" name="delete">DELETE</button>
-    </p>
-  </form>
+  <p>
+    <textarea id="cookie" placeholder="Cookie..." bind:value={cookie}
+    ></textarea>
+  </p>
+  <p>
+    <input id="url" bind:value={url} placeholder="url..." />
+  </p>
+  <p>
+    <button
+      type="submit"
+      name="get"
+      onclick={async () => await invoke("http_get")}>GET</button
+    >
+    <button
+      type="submit"
+      name="post"
+      onclick={async () => {
+        console.info(getContent());
+
+        response = await invoke("http_post", {
+          urlStr: url,
+          cookieStr: cookie,
+          headers: { hoge: "piyo" },
+          dataStr: JSON.stringify(getContent()),
+        });
+      }}>POST</button
+    >
+    <button type="submit" name="put">PUT</button>
+    <button type="submit" name="delete">DELETE</button>
+  </p>
 
   <div>
-    <JSONEditor bind:content />
+    <JSONEditor {content} onchange={handleChange} />
   </div>
+
+  <dic>
+    <textarea id="response" readonly bind:value={response}></textarea>
+  </dic>
 </div>
