@@ -77,14 +77,14 @@
       <input id="url" bind:value={url} placeholder="url..." />
     </p>
     <p>
-      <button type="submit" name="get" on:click={
+      <button type="submit" name="get" onclick={
       async () =>
     await invoke("http_get")
 }
       >GET</button>
-      <button type="submit" name="post" on:click={
+      <button type="submit" name="post" onclick={
       async () =>
-    await invoke("http_post")
+    await invoke("http_post", {urlStr: url, cookirStr: cookie, headerStr: "", })
       }>POST</button>
       <button type="submit" name="put">PUT</button>
       <button type="submit" name="delete">DELETE</button>

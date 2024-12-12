@@ -61,6 +61,57 @@ fn parse_params_string(params_string: &str) -> HashMap<String, String> {
     params
 }
 
+fn make_url(url_str: &str) -> Url {
+    Url::parse(url_str).unwrap()
+}
+fn make_cookie(cookie_str: &str) -> Arc<Jar> {
+    let cookies = Arc::new(Jar::default());
+    cookies.add_cookie_str(cookie_str, &url);
+
+    cookies
+}
+
+fn make_default_header(header_str: &str) -> HeaderMap {
+    let mut default_headers: HeaderMap = HeaderMap::new();
+    parse_header_string(header_str)
+        .into_iter()
+        .for_each(|(k, v)| {
+            default_headers.insert(
+                header::HeaderName::from_bytes(k.as_bytes()).unwrap(),
+                v.parse().unwrap(),
+            );
+        });
+
+    default_headers
+}
+
+fn make_client(default_header: HeaderMap, cookies: Arc<Jar>) -> Client {
+    let client_builder: ClientBuilder = Client::builder();
+    let client: Client = client_builder
+        .default_headers(default_headers)
+        .cookie_provider(cookies)
+        .timeout(Duration::from_secs(30))
+        .build()
+        .unwrap();
+
+    client
+}
+
+fn receive_response(client: Client, onetime_headers: HeaderMap) -> Response {
+    let rt = create_rt();
+    rt.block_on(async {
+        let mut response: Response = request_builder
+            .headers(onetime_headers)
+            .body(body)
+            // .query(&queries)
+            .send()
+            .await
+            .unwrap();
+
+        response
+    })
+}
+
 fn create_rt() -> Runtime {
     tokio::runtime::Runtime::new().unwrap()
 }
@@ -120,55 +171,36 @@ fn http_get(url_str: &str, cookie_str: &str, header_str: &str) -> String {
 
 #[tauri::command]
 fn http_post(url_str: &str, cookie_str: &str, header_str: &str) -> String {
-    let rt = create_rt();
-    rt.block_on(async {
-        let url = Url::parse(url_str).unwrap();
+    let url = make_url(url_str);
+    let cookies = make_cookie(cookie_str);
 
-        let cookies = Arc::new(Jar::default());
-        cookies.add_cookie_str(cookie_str, &url);
+    let mut default_headers: HeaderMap = make_default_header(header_str);
 
-        let mut default_headers: HeaderMap = HeaderMap::new();
-        parse_header_string(header_str)
-            .into_iter()
-            .for_each(|(k, v)| {
-                default_headers.insert(
-                    header::HeaderName::from_bytes(k.as_bytes()).unwrap(),
-                    v.parse().unwrap(),
-                );
-            });
+    let client: Client = make_client()
 
-        let client_builder: ClientBuilder = Client::builder();
-        let client: Client = client_builder
-            .default_headers(default_headers)
-            .cookie_provider(cookies)
-            .timeout(Duration::from_secs(30))
-            .build()
-            .unwrap();
+    let mut onetime_headers: HeaderMap = HeaderMap::new();
 
-        let mut onetime_headers: HeaderMap = HeaderMap::new();
+    let request_builder: RequestBuilder = client.post(url);
+    let mut response: Response = request_builder
+        .headers(onetime_headers)
+        .body(body)
+        // .query(&queries)
+        .send()
+        .await
+        .unwrap();
 
-        let request_builder: RequestBuilder = client.post(url);
-        let mut response: Response = request_builder
-            .headers(onetime_headers)
-            .body(body)
-            // .query(&queries)
-            .send()
-            .await
-            .unwrap();
-
-        let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
-            Some(v) if v == "chunked" => {
-                let mut raw_res = Vec::new();
-                while let Some(chunk) = response.chunk().await.unwrap() {
-                    chunk.to_vec().into_iter().for_each(|x| raw_res.push(x));
-                }
-                String::from_utf8(raw_res).unwrap()
+    let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
+        Some(v) if v == "chunked" => {
+            let mut raw_res = Vec::new();
+            while let Some(chunk) = response.chunk().await.unwrap() {
+                chunk.to_vec().into_iter().for_each(|x| raw_res.push(x));
             }
-            _ => response.text().await.unwrap(),
-        };
+            String::from_utf8(raw_res).unwrap()
+        }
+        _ => response.text().await.unwrap(),
+    };
 
-        res_str
-    })
+    res_str
 }
 
 #[tauri::command]
@@ -206,7 +238,7 @@ pub fn run() {
             load_config,
             save_config,
             http_get,
-            http_ppst,
+            http_post,
         ])
         .manage(MkJsonState::new())
         .run(tauri::generate_context!())
