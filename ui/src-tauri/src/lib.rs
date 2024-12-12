@@ -5,6 +5,7 @@ pub mod config;
 use reqwest::cookie::Jar;
 use reqwest::header;
 use reqwest::header::HeaderMap;
+use reqwest::header::HeaderName;
 use reqwest::Client;
 use reqwest::ClientBuilder;
 use reqwest::RequestBuilder;
@@ -50,42 +51,31 @@ fn parse_header_string(header_string: &str) -> HashMap<String, String> {
     headers
 }
 
-fn parse_params_string(params_string: &str) -> HashMap<String, String> {
-    let mut params = HashMap::new();
-    for line in params_string.lines() {
-        let mut parts = line.splitn(2, ':');
-        let key = parts.next().unwrap().trim().to_string();
-        let value = parts.next().unwrap().trim().to_string();
-        params.insert(key, value);
-    }
-    params
-}
-
 fn make_url(url_str: &str) -> Url {
     Url::parse(url_str).unwrap()
 }
-fn make_cookie(cookie_str: &str) -> Arc<Jar> {
+
+fn make_cookie(cookie_str: &str, url: &Url) -> Arc<Jar> {
     let cookies = Arc::new(Jar::default());
-    cookies.add_cookie_str(cookie_str, &url);
+    cookies.add_cookie_str(cookie_str, url);
 
     cookies
 }
 
-fn make_default_header(header_str: &str) -> HeaderMap {
+fn make_default_header(headers: HashMap<&str, &str>) -> HeaderMap {
     let mut default_headers: HeaderMap = HeaderMap::new();
-    parse_header_string(header_str)
-        .into_iter()
-        .for_each(|(k, v)| {
-            default_headers.insert(
-                header::HeaderName::from_bytes(k.as_bytes()).unwrap(),
-                v.parse().unwrap(),
-            );
-        });
+
+    for (k, v) in headers.iter() {
+        default_headers.insert(
+            HeaderName::try_from(k.to_owned()).unwrap(),
+            v.parse().unwrap(),
+        );
+    }
 
     default_headers
 }
 
-fn make_client(default_header: HeaderMap, cookies: Arc<Jar>) -> Client {
+fn make_client(default_headers: HeaderMap, cookies: Arc<Jar>) -> Client {
     let client_builder: ClientBuilder = Client::builder();
     let client: Client = client_builder
         .default_headers(default_headers)
@@ -97,19 +87,20 @@ fn make_client(default_header: HeaderMap, cookies: Arc<Jar>) -> Client {
     client
 }
 
-fn receive_response(client: Client, onetime_headers: HeaderMap) -> Response {
-    let rt = create_rt();
-    rt.block_on(async {
-        let mut response: Response = request_builder
-            .headers(onetime_headers)
-            .body(body)
-            // .query(&queries)
-            .send()
-            .await
-            .unwrap();
+async fn receive_response(
+    request_builder: RequestBuilder,
+    onetime_headers: HeaderMap,
+    data_str: &str,
+) -> Response {
+    let response: Response = request_builder
+        .headers(onetime_headers)
+        .body(data_str.to_owned())
+        // .query(&queries)
+        .send()
+        .await
+        .unwrap();
 
-        response
-    })
+    response
 }
 
 fn create_rt() -> Runtime {
@@ -154,7 +145,7 @@ fn http_get(url_str: &str, cookie_str: &str, header_str: &str) -> String {
             .await
             .unwrap();
 
-        let res_str = match response.headers().post(header::TRANSFER_ENCODING) {
+        let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
             Some(v) if v == "chunked" => {
                 let mut raw_res = Vec::new();
                 while let Some(chunk) = response.chunk().await.unwrap() {
@@ -170,37 +161,46 @@ fn http_get(url_str: &str, cookie_str: &str, header_str: &str) -> String {
 }
 
 #[tauri::command]
-fn http_post(url_str: &str, cookie_str: &str, header_str: &str) -> String {
+fn http_post(
+    url_str: &str,
+    cookie_str: &str,
+    headers: HashMap<&str, &str>,
+    data_str: &str,
+) -> String {
+    println!("POST");
+    println!("url: {}", url_str);
+    println!("cookie: {}", cookie_str);
+    println!("header: {:?}", headers);
+    println!("data: {}", data_str);
+
     let url = make_url(url_str);
-    let cookies = make_cookie(cookie_str);
+    let cookies = make_cookie(cookie_str, &url);
 
-    let mut default_headers: HeaderMap = make_default_header(header_str);
-
-    let client: Client = make_client()
-
-    let mut onetime_headers: HeaderMap = HeaderMap::new();
+    let mut default_headers: HeaderMap = make_default_header(headers);
+    let client: Client = make_client(default_headers, cookies);
 
     let request_builder: RequestBuilder = client.post(url);
-    let mut response: Response = request_builder
-        .headers(onetime_headers)
-        .body(body)
-        // .query(&queries)
-        .send()
-        .await
-        .unwrap();
 
-    let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
-        Some(v) if v == "chunked" => {
-            let mut raw_res = Vec::new();
-            while let Some(chunk) = response.chunk().await.unwrap() {
-                chunk.to_vec().into_iter().for_each(|x| raw_res.push(x));
+    let rt = create_rt();
+    rt.block_on(async {
+        let mut onetime_headers: HeaderMap = HeaderMap::new();
+        let mut response = receive_response(request_builder, onetime_headers, data_str).await;
+
+        let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
+            Some(v) if v == "chunked" => {
+                let mut raw_res = Vec::new();
+                while let Some(chunk) = response.chunk().await.unwrap() {
+                    chunk.to_vec().into_iter().for_each(|x| raw_res.push(x));
+                }
+                String::from_utf8(raw_res).unwrap()
             }
-            String::from_utf8(raw_res).unwrap()
-        }
-        _ => response.text().await.unwrap(),
-    };
+            _ => response.text().await.unwrap(),
+        };
 
-    res_str
+        println!("{}", res_str);
+
+        res_str
+    })
 }
 
 #[tauri::command]
