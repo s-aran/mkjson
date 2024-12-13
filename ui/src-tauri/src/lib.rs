@@ -57,7 +57,10 @@ fn make_url(url_str: &str) -> Url {
 
 fn make_cookie(cookie_str: &str, url: &Url) -> Arc<Jar> {
     let cookies = Arc::new(Jar::default());
-    cookies.add_cookie_str(cookie_str, url);
+
+    cookies_str.split("; ").for_each(|e| 
+    cookies.add_cookie_str(e, url)
+});
 
     cookies
 }
