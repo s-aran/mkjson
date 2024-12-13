@@ -109,41 +109,24 @@ fn create_rt() -> Runtime {
 
 #[tauri::command]
 fn http_get(url_str: &str, cookie_str: &str, header_str: &str) -> String {
+    println!("GET");
+    println!("url: {}", url_str);
+    println!("cookie: {}", cookie_str);
+    println!("header: {:?}", headers);
+    println!("data: {}", data_str);
+
+    let url = make_url(url_str);
+    let cookies = make_cookie(cookie_str, &url);
+
+    let mut default_headers: HeaderMap = make_default_header(headers);
+    let client: Client = make_client(default_headers, cookies);
+
+    let request_builder: RequestBuilder = client.get(url);
+
     let rt = create_rt();
     rt.block_on(async {
-        let url = Url::parse(url_str).unwrap();
-
-        let cookies = Arc::new(Jar::default());
-        cookies.add_cookie_str(cookie_str, &url);
-
-        let mut default_headers: HeaderMap = HeaderMap::new();
-        parse_header_string(header_str)
-            .into_iter()
-            .for_each(|(k, v)| {
-                default_headers.insert(
-                    header::HeaderName::from_bytes(k.as_bytes()).unwrap(),
-                    v.parse().unwrap(),
-                );
-            });
-
-        let client_builder: ClientBuilder = Client::builder();
-        let client: Client = client_builder
-            .default_headers(default_headers)
-            .cookie_provider(cookies)
-            .timeout(Duration::from_secs(30))
-            .build()
-            .unwrap();
-
         let mut onetime_headers: HeaderMap = HeaderMap::new();
-
-        let request_builder: RequestBuilder = client.get(url);
-        let mut response: Response = request_builder
-            .headers(onetime_headers)
-            // .body(body)
-            // .query(&queries)
-            .send()
-            .await
-            .unwrap();
+        let mut response = receive_response(request_builder, onetime_headers, data_str).await;
 
         let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
             Some(v) if v == "chunked" => {
@@ -155,6 +138,8 @@ fn http_get(url_str: &str, cookie_str: &str, header_str: &str) -> String {
             }
             _ => response.text().await.unwrap(),
         };
+
+        println!("{}", res_str);
 
         res_str
     })
@@ -180,6 +165,91 @@ fn http_post(
     let client: Client = make_client(default_headers, cookies);
 
     let request_builder: RequestBuilder = client.post(url);
+
+    let rt = create_rt();
+    rt.block_on(async {
+        let mut onetime_headers: HeaderMap = HeaderMap::new();
+        let mut response = receive_response(request_builder, onetime_headers, data_str).await;
+
+        let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
+            Some(v) if v == "chunked" => {
+                let mut raw_res = Vec::new();
+                while let Some(chunk) = response.chunk().await.unwrap() {
+                    chunk.to_vec().into_iter().for_each(|x| raw_res.push(x));
+                }
+                String::from_utf8(raw_res).unwrap()
+            }
+            _ => response.text().await.unwrap(),
+        };
+
+        println!("{}", res_str);
+
+        res_str
+    })
+}
+
+#[tauri::command]
+fn http_put(
+    url_str: &str,
+    cookie_str: &str,
+    headers: HashMap<&str, &str>,
+    data_str: &str,
+) -> String {
+    println!("PUT");
+    println!("url: {}", url_str);
+    println!("cookie: {}", cookie_str);
+    println!("header: {:?}", headers);
+    println!("data: {}", data_str);
+
+    let url = make_url(url_str);
+    let cookies = make_cookie(cookie_str, &url);
+
+    let mut default_headers: HeaderMap = make_default_header(headers);
+    let client: Client = make_client(default_headers, cookies);
+
+    let request_builder: RequestBuilder = client.put(url);
+
+    let rt = create_rt();
+    rt.block_on(async {
+        let mut onetime_headers: HeaderMap = HeaderMap::new();
+        let mut response = receive_response(request_builder, onetime_headers, data_str).await;
+
+        let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
+            Some(v) if v == "chunked" => {
+                let mut raw_res = Vec::new();
+                while let Some(chunk) = response.chunk().await.unwrap() {
+                    chunk.to_vec().into_iter().for_each(|x| raw_res.push(x));
+                }
+                String::from_utf8(raw_res).unwrap()
+            }
+            _ => response.text().await.unwrap(),
+        };
+
+        println!("{}", res_str);
+
+        res_str
+    })
+}
+#[tauri::command]
+fn http_delete(
+    url_str: &str,
+    cookie_str: &str,
+    headers: HashMap<&str, &str>,
+    data_str: &str,
+) -> String {
+    println!("DELETE");
+    println!("url: {}", url_str);
+    println!("cookie: {}", cookie_str);
+    println!("header: {:?}", headers);
+    println!("data: {}", data_str);
+
+    let url = make_url(url_str);
+    let cookies = make_cookie(cookie_str, &url);
+
+    let mut default_headers: HeaderMap = make_default_header(headers);
+    let client: Client = make_client(default_headers, cookies);
+
+    let request_builder: RequestBuilder = client.delete(url);
 
     let rt = create_rt();
     rt.block_on(async {
@@ -239,6 +309,8 @@ pub fn run() {
             save_config,
             http_get,
             http_post,
+            http_put,
+            http_delete,
         ])
         .manage(MkJsonState::new())
         .run(tauri::generate_context!())
