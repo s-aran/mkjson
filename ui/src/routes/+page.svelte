@@ -150,7 +150,7 @@
   </p>
 
   <div>
-    <JSONEditor {content} onchange={handleChange} />
+    <JSONEditor {content} onChange={handleChange} />
   </div>
 
   <dic>
