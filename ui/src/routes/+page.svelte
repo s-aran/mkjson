@@ -98,24 +98,55 @@
     <button
       type="submit"
       name="get"
-      onclick={async () => await invoke("http_get")}>GET</button
+      onclick={
+        async () => {
+          response = await invoke("http_get",
+          {
+            urlStr: url,
+            cookieStr: cookie,
+            headers: {},
+            dataStr: JSON.stringify(getContent()),
+          });
+      }
+      }
+      >GET</button
     >
     <button
       type="submit"
       name="post"
       onclick={async () => {
-        console.info(getContent());
-
         response = await invoke("http_post", {
           urlStr: url,
           cookieStr: cookie,
-          headers: { hoge: "piyo" },
+          headers: {},
           dataStr: JSON.stringify(getContent()),
         });
-      }}>POST</button
+      }
+      }
+      >POST</button
     >
-    <button type="submit" name="put">PUT</button>
-    <button type="submit" name="delete">DELETE</button>
+    <button type="submit" name="put"
+      onclick={async () => {
+        response = await invoke("http_put", {
+          urlStr: url,
+          cookieStr: cookie,
+          headers: {},
+          dataStr: JSON.stringify(getContent()),
+        });
+      }
+      }
+    >PUT</button>
+    <button type="submit" name="delete"
+      onclick={async () => {
+        response = await invoke("http_delete", {
+          urlStr: url,
+          cookieStr: cookie,
+          headers: {},
+          dataStr: JSON.stringify(getContent()),
+        });
+      }
+      }
+    >DELETE</button>
   </p>
 
   <div>
