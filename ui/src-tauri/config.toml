@@ -3,11 +3,13 @@ version = 1
 [[templates]]
 name = "sample1"
 url = "https://httpbin.org/post"
+method = "POST"
+header = "{\"Content-Type\": \"application/json\"}"
 data = "{\"array\":[1,2,3],\"boolean\":true,\"color\":\"#82b92c\",\"null\":null,\"number\":123,\"object\":{\"a\":\"b\",\"c\":\"d\"},\"string\":\"Hello World\"}"
-header = "{}"
 
 [[templates]]
 name = "sampleAA"
 url = "http://example.com"
-data = "{}"
+method = "POST"
 header = "{}"
+data = "{}"

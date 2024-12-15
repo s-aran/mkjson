@@ -1,8 +1,9 @@
 interface ConfigTemplate {
 	name: string;
 	url: string;
-	data: string;
+	method: string;
 	header: string;
+	data: string;
 }
 
 interface Config {

@@ -1,7 +1,16 @@
 <script lang="ts">
+  import type { TemplateObject } from "../types/TemplateObject";
+
   export let options: TemplateObject[] = [];
   export let updateSelectCallback: CallableFunction;
-  let selected: TemplateObject = { id: 0, name: "", content: "" };
+  let selected: TemplateObject = {
+    id: 0,
+    name: "",
+    url: "",
+    method: "GET",
+    header: "{}",
+    data: "{}",
+  };
 
   function onChange() {
     console.info(selected);
