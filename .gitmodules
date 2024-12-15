@@ -1,0 +1,3 @@
+[submodule "ui/chitose"]
+	path = ui/chitose
+	url = git@github.com.s:s-aran/chitose.git
