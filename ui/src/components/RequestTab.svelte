@@ -10,8 +10,8 @@
   import HeaderTab from "./HeaderTab.svelte";
 
   export let data: MyJson;
-
-  let response: string = "";
+  export let response: string;
+  export let updateCallback: CallableFunction;
 
   let items = [
     {
@@ -80,12 +80,13 @@
     name="post"
     onclick={async () => {
       console.info(data.header);
-      response = await invoke(getHandlerName(), {
+      const response = await invoke(getHandlerName(), {
         urlStr: data.url,
         cookieStr: data.cookie,
         headers: getJson(data.header),
         dataStr: JSON.stringify(data.body),
       });
+      updateCallback(response);
     }}>send</button
   >
 </p>
