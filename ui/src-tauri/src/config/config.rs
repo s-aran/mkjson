@@ -4,8 +4,9 @@ use serde::{Deserialize, Serialize};
 pub struct ConfigTemplate {
     pub name: String,
     pub url: String,
-    pub data: String,
+    pub method: String,
     pub header: String,
+    pub data: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
