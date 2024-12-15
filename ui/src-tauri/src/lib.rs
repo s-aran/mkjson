@@ -2,6 +2,8 @@
 
 pub mod config;
 
+use chitose;
+
 use reqwest::cookie::Jar;
 use reqwest::header;
 use reqwest::header::HeaderMap;
@@ -18,6 +20,7 @@ use std::string::String;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
+use tauri::Manager;
 use tokio::runtime::Runtime;
 
 use config::config::Config;
@@ -58,9 +61,9 @@ fn make_url(url_str: &str) -> Url {
 fn make_cookie(cookie_str: &str, url: &Url) -> Arc<Jar> {
     let cookies = Arc::new(Jar::default());
 
-    cookie_str.split("; ").for_each(|e| 
-        cookies.add_cookie_str(e, url)
-    });
+    cookie_str
+        .split("; ")
+        .for_each(|e| cookies.add_cookie_str(e, url));
 
     cookies
 }
@@ -81,7 +84,7 @@ fn make_default_header(headers: HashMap<&str, &str>) -> HeaderMap {
 fn make_client(default_headers: HeaderMap, cookies: Arc<Jar>) -> Client {
     let client_builder: ClientBuilder = Client::builder();
     let client: Client = client_builder
-        .default_headers(default_headers)
+        // .default_headers(default_headers)
         .cookie_provider(cookies)
         .timeout(Duration::from_secs(30))
         .build()
@@ -111,7 +114,12 @@ fn create_rt() -> Runtime {
 }
 
 #[tauri::command]
-fn http_get(url_str: &str, cookie_str: &str, header_str: &str) -> String {
+fn http_get(
+    url_str: &str,
+    cookie_str: &str,
+    headers: HashMap<&str, &str>,
+    data_str: &str,
+) -> String {
     println!("GET");
     println!("url: {}", url_str);
     println!("cookie: {}", cookie_str);
@@ -121,7 +129,7 @@ fn http_get(url_str: &str, cookie_str: &str, header_str: &str) -> String {
     let url = make_url(url_str);
     let cookies = make_cookie(cookie_str, &url);
 
-    let mut default_headers: HeaderMap = make_default_header(headers);
+    let default_headers: HeaderMap = make_default_header(headers);
     let client: Client = make_client(default_headers, cookies);
 
     let request_builder: RequestBuilder = client.get(url);
@@ -155,40 +163,9 @@ fn http_post(
     headers: HashMap<&str, &str>,
     data_str: &str,
 ) -> String {
-    println!("POST");
-    println!("url: {}", url_str);
-    println!("cookie: {}", cookie_str);
-    println!("header: {:?}", headers);
-    println!("data: {}", data_str);
-
-    let url = make_url(url_str);
-    let cookies = make_cookie(cookie_str, &url);
-
-    let mut default_headers: HeaderMap = make_default_header(headers);
-    let client: Client = make_client(default_headers, cookies);
-
-    let request_builder: RequestBuilder = client.post(url);
-
+    dbg!(cookie_str);
     let rt = create_rt();
-    rt.block_on(async {
-        let mut onetime_headers: HeaderMap = HeaderMap::new();
-        let mut response = receive_response(request_builder, onetime_headers, data_str).await;
-
-        let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
-            Some(v) if v == "chunked" => {
-                let mut raw_res = Vec::new();
-                while let Some(chunk) = response.chunk().await.unwrap() {
-                    chunk.to_vec().into_iter().for_each(|x| raw_res.push(x));
-                }
-                String::from_utf8(raw_res).unwrap()
-            }
-            _ => response.text().await.unwrap(),
-        };
-
-        println!("{}", res_str);
-
-        res_str
-    })
+    rt.block_on(async { chitose::http_post(url_str, cookie_str, headers, data_str).await })
 }
 
 #[tauri::command]
@@ -305,6 +282,7 @@ fn save_config(state: tauri::State<'_, MkJsonState>, config: Config) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             greet,
@@ -316,6 +294,16 @@ pub fn run() {
             http_delete,
         ])
         .manage(MkJsonState::new())
+        .setup(|app| {
+            let window = app.get_webview_window("main").unwrap();
+            let _ = window.set_title("MkJson");
+
+            // open dev tools only debug build
+            #[cfg(debug_assertions)]
+            window.open_devtools();
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
