@@ -1,12 +1,20 @@
 <script lang="ts">
-  export let data: string;
+  import { onMount } from "svelte";
+
+  export let getContent: CallableFunction;
   export let updateCallback: CallableFunction;
 
-  $: {
-    updateCallback(data);
-  }
+  let data: string;
+
+  onMount(() => {
+    data = getContent();
+  });
 </script>
 
 <div>
-  <textarea bind:value={data} style="width: 100%; height: 5rem"></textarea>
+  <textarea
+    bind:value={data}
+    onchange={() => updateCallback(data)}
+    style="width: 100%; height: 5rem"
+  ></textarea>
 </div>
