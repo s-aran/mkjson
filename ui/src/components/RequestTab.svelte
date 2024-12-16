@@ -5,7 +5,7 @@
 
   import { invoke } from "@tauri-apps/api/core";
   import { Method, type MyJson } from "../types/MyJson";
-  import { getJson } from "../utils/json";
+  import { getJson, getText } from "../utils/json";
   import CookieTab from "./CookieTab.svelte";
   import HeaderTab from "./HeaderTab.svelte";
 
@@ -84,7 +84,7 @@
         urlStr: data.url,
         cookieStr: data.cookie,
         headers: getJson(data.header),
-        dataStr: JSON.stringify(data.body),
+        dataStr: getText(data.body),
       });
       updateCallback(response);
     }}>send</button
