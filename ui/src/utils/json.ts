@@ -1,7 +1,7 @@
 import type { Content } from "svelte-jsoneditor";
 
 export const getText = (content: Content) => {
-	if ("text" in Object.keys(content) && content.text) {
+	if (Object.keys(content).includes("text") && content.text) {
 		return content.text;
 	} else {
 		return JSON.stringify(content.json);
@@ -9,7 +9,7 @@ export const getText = (content: Content) => {
 };
 
 export const getJson = (content: Content) => {
-	if ("json" in Object.keys(content) && content.json) {
+	if (Object.keys(content).includes("json") && content.json) {
 		return content.json;
 	} else {
 		return JSON.parse(content.text);
