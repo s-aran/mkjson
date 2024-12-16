@@ -8,7 +8,7 @@
 <ul>
   {#each items as item}
     <li class={activeTabValue === item.value ? "active" : ""}>
-      <span on:click={handleClick(item.value)}>{item.label}</span>
+      <span onclick={handleClick(item.value)}>{item.label}</span>
     </li>
   {/each}
 </ul>
