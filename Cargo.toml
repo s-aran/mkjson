@@ -1,17 +1,15 @@
 [package]
 name = "mkjson"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-chitose = { version = "0.1.0", path = "ui/chitose" }
-clap = { version = "4.5", features = ["derive"] }
-jsonxf = "1.1.1"
-liquid = "0.26.9"
-mustache = "0.9.0"
-rand = { version = "0.8.5", features = ["serde"] }
-regex = "1.11.0"
+clap = { version = "4", features = ["derive"] }
+chitose = { version = "0.1.0", git ="https://github.com/s-aran/chitose.git" , branch="main"}
+libmll = { version = "0.1.0", git="https://github.com/s-aran/mll.git", branch ="main", features = ["http"] }
+jsonxf = "1.1"
+rand = { version = "0.8", features = ["serde"] }
+regex = "1"
 serde = { version = "1.0", features = ["derive", "serde_derive"] }
 serde_json = "1.0"
-toml = "0.8.19"
-
+toml = "0.8"
