@@ -5,12 +5,15 @@ edition = "2024"
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
-chitose = { version = "0.1.0", git ="https://github.com/s-aran/chitose.git" , branch="main"}
-libmll = { version = "0.1.0", git="https://github.com/s-aran/mll.git", branch ="main", features = ["http"] }
+chitose = { version = "0.1.0", git = "https://github.com/s-aran/chitose.git", branch = "main" }
+libmll = { version = "0.1.0", git = "https://github.com/s-aran/mll.git", branch = "main", features = [
+  "http",
+  "datetime",
+  "html",
+] }
 jsonxf = "1.1"
 rand = { version = "0.8", features = ["serde"] }
 regex = "1"
 serde = { version = "1.0", features = ["derive", "serde_derive"] }
 serde_json = "1.0"
 toml = "0.8"
-
