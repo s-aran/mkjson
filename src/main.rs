@@ -45,3 +45,37 @@ fn main() {
     let _ = out.write_all(rendered.as_bytes());
     let _ = out.flush();
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_success() {
+        let template = r#"
+{
+    "name": "{{name}}",
+    "age": {{age}}
+}
+        "#;
+        let values = r#"
+name = "hoge"
+age = 21
+    "#;
+
+        let mut mll = Mll::new();
+        mll.set_template(template.to_string());
+        // mll.set_pre_process_script(values);
+
+        let actual = mll.render_with_lua(&values.to_string()).unwrap();
+
+        let expected = r#"
+{
+    "name": "hoge",
+    "age": 21
+}
+        "#;
+
+        assert_eq!(expected, actual);
+    }
+}

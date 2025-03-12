@@ -2,12 +2,14 @@ version = 1
 
 [[templates]]
 name = "sample1"
-url = "http://example.com"
-data = "this is a pen."
-header = "{}"
+url = "https://httpbin.org/post"
+method = "POST"
+header = "{\"Content-Type\": \"application/json\"}"
+data = "{\"array\":[1,2,3],\"boolean\":true,\"color\":\"#82b92c\",\"null\":null,\"number\":123,\"object\":{\"a\":\"b\",\"c\":\"d\"},\"string\":\"Hello World\"}"
 
 [[templates]]
 name = "sampleAA"
 url = "http://example.com"
-data = "The quick brown fox jumps over the lazy dog"
+method = "POST"
 header = "{}"
+data = "{}"

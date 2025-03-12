@@ -1,49 +1,50 @@
 <script lang="ts">
   import { invoke } from "@tauri-apps/api/core";
   import { onMount } from "svelte";
-  import { JSONEditor } from "svelte-jsoneditor";
   import JsonSelector from "../components/JsonSelector.svelte";
+  import RequestTab from "../components/RequestTab.svelte";
+  import { Method, type MyJson } from "../types/MyJson";
+  import type { TemplateObject } from "../types/TemplateObject";
+  import OkCancelDialog from "../components/OkCancelDialog.svelte";
+  import NameInput from "../dialogs/NameInput.svelte";
+  import { getText } from "../utils/json";
 
   let config: Config = {
     version: 0,
     templates: [],
   };
 
-  let content = {
-    text: undefined, // can be used to pass a stringified JSON document instead
-    json: {
-      array: [1, 2, 3],
-      boolean: true,
-      color: "#82b92c",
-      null: null,
-      number: 123,
-      object: { a: "b", c: "d" },
-      string: "Hello World",
-    },
+  let showInputNameDialog = false;
+  let response: str = "";
+  let updateResponse = (r: string) => {
+    response = r;
   };
 
-  let cookie = "";
-  let url = "";
-
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-  }
-
-  const getContent = () => content;
-  const updateContent = (newContent: string) => {
-    content = JSON.parse(newContent);
+  let loadedName: string;
+  let loadedData: MyJson = {
+    url: "",
+    method: Method.GET,
+    header: { json: {} },
+    cookie: "",
+    body: { json: {} },
   };
 
   const onSelectUpdate = (selected: TemplateObject) => {
     console.info(selected);
-    url = selected.url;
-    content = JSON.parse(selected.data);
-    updateContent(selected.data);
+
+    loadedName = selected.name;
+    loadedData = {
+      url: selected.url,
+      method: selected.method,
+      header: { text: selected.header },
+      cookie: "",
+      body: { json: JSON.parse(selected.data) },
+    };
   };
 
   onMount(async () => {
     config = await invoke("load_config");
-    console.info(config);
+    console.info("load_config", config);
   });
 
   $: {
@@ -54,37 +55,49 @@
 </script>
 
 <header>
-  <div id="selector-area">
-    <JsonSelector
-      options={config.templates.map((e, i) => ({
-        id: i,
-        name: e.name,
-        url: e.url,
-        data: e.data,
-      }))}
-      updateSelectCallback={onSelectUpdate}
-    />
+  <div>
+    <div id="selector-area">
+      <JsonSelector
+        options={config.templates.map((e, i) => ({
+          id: i,
+          name: e.name,
+          url: e.url,
+          method: e.method,
+          header: e.header,
+          data: e.data,
+        }))}
+        updateSelectCallback={onSelectUpdate}
+      />
+    </div>
+
+    <button
+      onclick={async () => {
+        const target = config.templates.filter((e) => e.name === loadedName)[0];
+        target.url = loadedData.url;
+        target.header = getText(loadedData.header);
+        target.data = getText(loadedData.body);
+
+        await invoke("save_config", { config });
+      }}>save</button
+    >
+    <!-- <button
+      onclick={async () => {
+        showInputNameDialog = true;
+      }}>add new</button
+    >
+    <button onclick={async () => await invoke("save_config", { config })}
+      >duplicate</button
+    > -->
   </div>
 </header>
 
 <div class="container">
-  <form class="row" on:submit|preventDefault={greet}>
-    <p>
-      <textarea id="cookie" placeholder="Cookie..." bind:value={cookie}
-      ></textarea>
-    </p>
-    <p>
-      <input id="url" bind:value={url} placeholder="url..." />
-    </p>
-    <p>
-      <button type="submit" name="get">GET</button>
-      <button type="submit" name="post">POST</button>
-      <button type="submit" name="put">PUT</button>
-      <button type="submit" name="delete">DELETE</button>
-    </p>
-  </form>
+  <dev>
+    <RequestTab data={loadedData} {response} updateCallback={updateResponse} />
+  </dev>
 
   <div>
-    <JSONEditor bind:content />
+    <textarea readonly bind:value={response} style="width: 99%; height: 5rem"
+    ></textarea>
   </div>
 </div>

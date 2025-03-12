@@ -2,21 +2,14 @@
 
 pub mod config;
 
-use reqwest::cookie::Jar;
-use reqwest::header;
-use reqwest::header::HeaderMap;
-use reqwest::Client;
-use reqwest::ClientBuilder;
-use reqwest::RequestBuilder;
-use reqwest::Response;
-use reqwest::Url;
+use chitose;
+
 use std::collections::HashMap;
 use std::fs::{self, File};
 use std::io::Write;
 use std::string::String;
-use std::sync::Arc;
 use std::sync::Mutex;
-use std::time::Duration;
+use tauri::Manager;
 use tokio::runtime::Runtime;
 
 use config::config::Config;
@@ -39,83 +32,56 @@ fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
 }
 
-fn parse_header_string(header_string: &str) -> HashMap<String, String> {
-    let mut headers = HashMap::new();
-    for line in header_string.lines() {
-        let mut parts = line.splitn(2, ':');
-        let key = parts.next().unwrap().trim().to_string();
-        let value = parts.next().unwrap().trim().to_string();
-        headers.insert(key, value);
-    }
-    headers
-}
-
-fn parse_params_string(params_string: &str) -> HashMap<String, String> {
-    let mut params = HashMap::new();
-    for line in params_string.lines() {
-        let mut parts = line.splitn(2, ':');
-        let key = parts.next().unwrap().trim().to_string();
-        let value = parts.next().unwrap().trim().to_string();
-        params.insert(key, value);
-    }
-    params
-}
-
 fn create_rt() -> Runtime {
     tokio::runtime::Runtime::new().unwrap()
 }
 
 #[tauri::command]
-fn http_get(url_str: &str, cookie_str: &str, header_str: &str) -> String {
+fn http_get(
+    url_str: &str,
+    cookie_str: &str,
+    headers: HashMap<&str, &str>,
+    data_str: &str,
+) -> String {
+    dbg!(cookie_str);
     let rt = create_rt();
-    rt.block_on(async {
-        let url = Url::parse(url_str).unwrap();
+    rt.block_on(async { chitose::http_get(url_str, cookie_str, headers, data_str).await })
+}
 
-        let cookies = Arc::new(Jar::default());
-        cookies.add_cookie_str(cookie_str, &url);
+#[tauri::command]
+fn http_post(
+    url_str: &str,
+    cookie_str: &str,
+    headers: HashMap<&str, &str>,
+    data_str: &str,
+) -> String {
+    dbg!(cookie_str);
+    let rt = create_rt();
+    rt.block_on(async { chitose::http_post(url_str, cookie_str, headers, data_str).await })
+}
 
-        let mut default_headers: HeaderMap = HeaderMap::new();
-        parse_header_string(header_str)
-            .into_iter()
-            .for_each(|(k, v)| {
-                default_headers.insert(
-                    header::HeaderName::from_bytes(k.as_bytes()).unwrap(),
-                    v.parse().unwrap(),
-                );
-            });
+#[tauri::command]
+fn http_put(
+    url_str: &str,
+    cookie_str: &str,
+    headers: HashMap<&str, &str>,
+    data_str: &str,
+) -> String {
+    dbg!(cookie_str);
+    let rt = create_rt();
+    rt.block_on(async { chitose::http_put(url_str, cookie_str, headers, data_str).await })
+}
 
-        let client_builder: ClientBuilder = Client::builder();
-        let client: Client = client_builder
-            .default_headers(default_headers)
-            .cookie_provider(cookies)
-            .timeout(Duration::from_secs(30))
-            .build()
-            .unwrap();
-
-        let mut onetime_headers: HeaderMap = HeaderMap::new();
-
-        let request_builder: RequestBuilder = client.get(url);
-        let mut response: Response = request_builder
-            .headers(onetime_headers)
-            // .body(body)
-            // .query(&queries)
-            .send()
-            .await
-            .unwrap();
-
-        let res_str = match response.headers().get(header::TRANSFER_ENCODING) {
-            Some(v) if v == "chunked" => {
-                let mut raw_res = Vec::new();
-                while let Some(chunk) = response.chunk().await.unwrap() {
-                    chunk.to_vec().into_iter().for_each(|x| raw_res.push(x));
-                }
-                String::from_utf8(raw_res).unwrap()
-            }
-            _ => response.text().await.unwrap(),
-        };
-
-        res_str
-    })
+#[tauri::command]
+fn http_delete(
+    url_str: &str,
+    cookie_str: &str,
+    headers: HashMap<&str, &str>,
+    data_str: &str,
+) -> String {
+    dbg!(cookie_str);
+    let rt = create_rt();
+    rt.block_on(async { chitose::http_delete(url_str, cookie_str, headers, data_str).await })
 }
 
 #[tauri::command]
@@ -136,6 +102,8 @@ fn load_config(state: tauri::State<'_, MkJsonState>) -> Result<Config, String> {
 
 #[tauri::command]
 fn save_config(state: tauri::State<'_, MkJsonState>, config: Config) {
+    dbg!(&config);
+
     let mut file = File::create("config.toml").unwrap();
     let toml_content = toml::to_string(&config).unwrap();
     write!(file, "{}", toml_content).unwrap();
@@ -147,9 +115,28 @@ fn save_config(state: tauri::State<'_, MkJsonState>, config: Config) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![greet, load_config, save_config,])
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            load_config,
+            save_config,
+            http_get,
+            http_post,
+            http_put,
+            http_delete,
+        ])
         .manage(MkJsonState::new())
+        .setup(|app| {
+            let window = app.get_webview_window("main").unwrap();
+            let _ = window.set_title("MkJson");
+
+            // open dev tools only debug build
+            #[cfg(debug_assertions)]
+            window.open_devtools();
+
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
