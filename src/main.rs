@@ -11,6 +11,8 @@ use libmll::Mll;
 struct Args {
     template_path: PathBuf,
     values_path: PathBuf,
+    #[arg(short, long, default_value = "false")]
+    pretty: bool,
 }
 
 fn main() {
@@ -39,10 +41,18 @@ fn main() {
         }
     };
 
+    let result = match args.pretty {
+        true => {
+            let obj: serde_json::Value = serde_json::from_str(&rendered).unwrap();
+            serde_json::to_string_pretty(&obj).unwrap()
+        }
+        _ => rendered,
+    };
+
     let stdout = std::io::stdout();
     let mut out = BufWriter::new(stdout.lock());
 
-    let _ = out.write_all(rendered.as_bytes());
+    let _ = out.write_all(result.as_bytes());
     let _ = out.flush();
 }
 
