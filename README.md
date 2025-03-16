@@ -1,18 +1,5 @@
 # mkjson
 
-json maker
+[mll](https://github.com/s-aran/mll) frontend
 
-## dev
-
-### fronend
-
-```sh
-cd ui
-bun run tauri dev
-```
-
-### backend
-
-```sh
-cargo run
-```
+<img src="images/overview.svg">
