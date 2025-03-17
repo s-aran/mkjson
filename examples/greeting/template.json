@@ -1,0 +1,4 @@
+{
+    "message": "{{greeting}}, {{username}}!",
+    "date": "{{today}}"
+}
