@@ -1,0 +1,4 @@
+{
+    "compiler": "{{compiler_name}}",
+    "version": "{{version}}"
+}
